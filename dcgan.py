@@ -111,7 +111,7 @@ def gan_train():
 		discriminator_train_input = train_x[np.random.randint(0,len(train_x),batch_size)]
 		discriminator_input = np.concatenate((generator_output,discriminator_train_input))
 		discriminator_labels = np.concatenate(( np.random.uniform(0,0.3,batch_size) , np.random.uniform(0.7,1.2,batch_size) ))
-		a = np.random.randint(0,len(discriminator_labels),batch_size/3)
+		a = np.random.randint(0,len(discriminator_labels),batch_size/4)
 		for val in a:
 			if val%2 == 0:
 				discriminator_labels[a] = 0.2
