@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import time
 import math
 from keras.layers.advanced_activations import LeakyReLU
+from keras.optimizers import Adam, sgd
 
 from PIL import Image
 
@@ -44,7 +45,7 @@ def discriminator():
 	disc.add(Flatten())
 	disc.add(Dense(128))
 	disc.add(Activation('relu'))
-	disc.add(Dropout(0.5))
+	disc.add(Dropout(0.2))
 	disc.add(Dense(1)) #only one output
 	disc.add(Activation('sigmoid'))
 	return disc
@@ -55,14 +56,14 @@ def generator():
 	gen.add(Dense(input_dim=100, output_dim=1024))
 	gen.add(Activation('relu'))
 	gen.add(Dense(256*7*7))
-	gen.add(Activation('LeakyReLU'))
-	# gen.add(Activation('relu'))
-	gen.add(Dropout(0.5))
+	# gen.add(Activation('LeakyReLU'))
+	gen.add(Activation('relu'))
+	gen.add(Dropout(0.2))
 	gen.add(Reshape((7, 7, 256)))
 	gen.add(UpSampling2D(size=(2, 2)))
 	gen.add(Convolution2D(128, 5, 5, border_mode='same'))
 	gen.add(Activation('relu'))
-	gen.add(Dropout(0.5))
+	gen.add(Dropout(0.2))
 	gen.add(UpSampling2D(size=(2, 2)))
 	gen.add(Convolution2D(1, 5, 5, border_mode='same'))
 	gen.add(Activation('relu'))
@@ -85,16 +86,18 @@ def gan_train():
 	# train_x -= 128.0
 	# train_x /= 255.0
 
-	train_y_gan = [1]*len(train_y)
-	test_y_gan = [1]*len(test_y)
+	train_y_gan = np.random.uniform(0.7,1.2,len(train_y))
+	test_y_gan = np.random.uniform(0.7,1.2,len(train_y))
 
 	Generator = generator()
 	Discriminator = discriminator()
 	GAN = gan(Generator,Discriminator)
+	discriminator_optim = sgd(lr=0.008)
+
 
 	GAN.compile(loss='binary_crossentropy',optimizer='SGD',metrics=['accuracy'])
 	Generator.compile(loss='binary_crossentropy',optimizer='adam',metrics=['accuracy'])
-	Discriminator.compile(loss='binary_crossentropy',optimizer='SGD',metrics=['accuracy'])
+	Discriminator.compile(loss='binary_crossentropy',optimizer=discriminator_optim,metrics=['accuracy'])
 
 	for i in range(trainer):
 		generator_input = np.random.normal(2, 2, size = (batch_size,100))
@@ -104,13 +107,14 @@ def gan_train():
 
 		discriminator_train_input = train_x[np.random.randint(0,len(train_x),batch_size)]
 		discriminator_input = np.concatenate((generator_output,discriminator_train_input))
-		discriminator_labels = np.concatenate(([0]*batch_size,[1]*batch_size))
+		discriminator_labels = np.concatenate(( np.random.uniform(0,0.2,batch_size) , np.random.uniform(0.8,1.2,batch_size) ))
+
 
 		discriminator_loss = Discriminator.train_on_batch(discriminator_input, discriminator_labels)
 		Discriminator.trainable = False
 
-		gan_labels = [1]*batch_size
-		gan_input = np.random.normal(2, 2, size = (batch_size,100))
+		gan_labels = np.random.uniform(0.9,1.1,batch_size)
+		gan_input = np.random.normal(3, 2, size = (batch_size,100))
 		gan_loss = GAN.train_on_batch(gan_input, gan_labels)
 		Discriminator.trainable = True
 		print discriminator_loss,gan_loss
@@ -129,7 +133,7 @@ def generate():
 	Discriminator = discriminator()
 	Discriminator.compile(loss='binary_crossentropy', optimizer="SGD")
 	Discriminator.load_weights('discriminator')
-	generator_input = np.random.normal(10, 20, size = (batch_size,100))
+	generator_input = np.random.normal(10, 2, size = (batch_size,100))
 	generator_output = Generator.predict(generator_input)
 	# generator_output = denormalize_data(generator_output)
 	inn = generator_output[:,:,:,0]
@@ -143,6 +147,5 @@ def generate():
 
 
 
-# gan_train()
-# generate()
-generator()
+gan_train()
+generate()
