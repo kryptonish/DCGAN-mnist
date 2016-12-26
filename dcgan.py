@@ -11,7 +11,7 @@ import time
 import math
 from keras.layers.advanced_activations import LeakyReLU
 from keras.optimizers import Adam, sgd
-
+from keras.layers.noise import GaussianNoise
 from PIL import Image
 
 #This code aims to construct a DCGAN that generates MNIST digits.
@@ -54,6 +54,8 @@ def discriminator():
 def generator():
 	gen = Sequential()
 	gen.add(Dense(input_dim=100, output_dim=1024))
+	# gen.add(GaussianNoise(3))
+
 	gen.add(Activation('relu'))
 	gen.add(Dense(256*7*7))
 	# gen.add(Activation('LeakyReLU'))
@@ -63,6 +65,7 @@ def generator():
 	gen.add(UpSampling2D(size=(2, 2)))
 	gen.add(Convolution2D(128, 5, 5, border_mode='same'))
 	gen.add(Activation('relu'))
+	gen.add(GaussianNoise(3))
 	gen.add(Dropout(0.2))
 	gen.add(UpSampling2D(size=(2, 2)))
 	gen.add(Convolution2D(1, 5, 5, border_mode='same'))
@@ -107,13 +110,19 @@ def gan_train():
 
 		discriminator_train_input = train_x[np.random.randint(0,len(train_x),batch_size)]
 		discriminator_input = np.concatenate((generator_output,discriminator_train_input))
-		discriminator_labels = np.concatenate(( np.random.uniform(0,0.2,batch_size) , np.random.uniform(0.8,1.2,batch_size) ))
+		discriminator_labels = np.concatenate(( np.random.uniform(0,0.3,batch_size) , np.random.uniform(0.7,1.2,batch_size) ))
+		a = np.random.randint(0,len(discriminator_labels),batch_size/3)
+		for val in a:
+			if val%2 == 0:
+				discriminator_labels[a] = 0.2
+			else:
+				discriminator_labels[a] = 1.0
 
 
 		discriminator_loss = Discriminator.train_on_batch(discriminator_input, discriminator_labels)
 		Discriminator.trainable = False
 
-		gan_labels = np.random.uniform(0.9,1.1,batch_size)
+		gan_labels = np.random.uniform(0.7,1.2,batch_size)
 		gan_input = np.random.normal(3, 2, size = (batch_size,100))
 		gan_loss = GAN.train_on_batch(gan_input, gan_labels)
 		Discriminator.trainable = True
@@ -133,7 +142,7 @@ def generate():
 	Discriminator = discriminator()
 	Discriminator.compile(loss='binary_crossentropy', optimizer="SGD")
 	Discriminator.load_weights('discriminator')
-	generator_input = np.random.normal(10, 2, size = (batch_size,100))
+	generator_input = np.random.normal(1, 2, size = (batch_size,100))
 	generator_output = Generator.predict(generator_input)
 	# generator_output = denormalize_data(generator_output)
 	inn = generator_output[:,:,:,0]
@@ -149,3 +158,4 @@ def generate():
 
 gan_train()
 generate()
+# generator()
